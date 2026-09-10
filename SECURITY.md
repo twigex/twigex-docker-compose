@@ -3,13 +3,13 @@
 ## Scope
 
 This repository contains the **Helm chart and deployment tooling** used to
-self-host [Cospace](https://cospace.mytwigex.com) on Kubernetes. It does not
-contain the Cospace application source code.
+self-host [Twigex](https://cospace.mytwigex.com) on Kubernetes. It does not
+contain the Twigex application source code.
 
 - **Vulnerabilities in the Helm chart** (templates, default values, RBAC,
   secret handling, ingress configuration, etc.) — report here, in this repo.
-- **Vulnerabilities in the Cospace application itself** (the container image
-  at `ghcr.io/twigex/cospace`) — also report here; we'll route it to the
+- **Vulnerabilities in the Twigex application itself** (the container image
+  at `ghcr.io/twigex/twigex`) — also report here; we'll route it to the
   right team internally.
 - **Vulnerabilities in third-party dependencies** this chart deploys
   (MariaDB, Redis, LiveKit, EuroOffice, Collabora) — please also report
@@ -19,8 +19,8 @@ contain the Cospace application source code.
 ## Supported Versions
 
 We support the **latest published chart version** on
-[GHCR](https://github.com/orgs/twigex/packages/container/package/helm-charts%2Fcospace)
-and [Artifact Hub](https://artifacthub.io/packages/helm/cospace/cospace).
+[GHCR](https://github.com/orgs/twigex/packages/container/package/helm-charts%2Ftwigex)
+and [Artifact Hub](https://artifacthub.io/packages/helm/twigex/twigex).
 Security fixes are released as new chart versions rather than backported to
 older ones — please upgrade to the latest version as part of remediation.
 
@@ -30,7 +30,7 @@ older ones — please upgrade to the latest version as part of remediation.
 
 Instead, report privately using one of these methods:
 
-1. **Preferred:** Use [GitHub Security Advisories](https://github.com/twigex/cospace/security/advisories/new)
+1. **Preferred:** Use [GitHub Security Advisories](https://github.com/twigex/Twigex/security/advisories/new)
    for this repository (Security tab → "Report a vulnerability"). This creates
    a private discussion thread with maintainers only.
 2. **Email:** [cospacesupport@twigex.com](mailto:cospacesupport@twigex.com) — please put "SECURITY" in the subject line so it's triaged promptly.
@@ -58,12 +58,12 @@ responsibly rather than disclosing publicly first.
 Given what this chart handles, reports involving any of the following are
 treated as high priority:
 
-- `cospace.server.encryptKey` handling or exposure
+- `twigex.server.encryptKey` handling or exposure
 - Default/weak secrets shipped in `values.yaml` (e.g. default admin password,
   default MariaDB/Redis passwords) being usable in a way that isn't clearly
   flagged as "change for production"
 - RBAC over-permissioning in chart templates
 - Ingress/TLS misconfiguration that could expose the app without the
   intended authentication
-- WOPI allow-list (`aliasgroup1`) misconfiguration between Cospace and
+- WOPI allow-list (`aliasgroup1`) misconfiguration between Twigex and
   EuroOffice/Collabora that could allow unauthorized document access
