@@ -1,0 +1,29 @@
+# twigex-docker-compose
+
+> twigex is a self-hosted workspace app for files, chat, and document
+> collaboration. This repository contains a single-node Docker Compose
+> stack that runs the whole product on one machine: the twigex app
+> (Go, port 3000), MariaDB 11, Redis 7, a Cube.js analytics cluster
+> (router + worker + api), the EuroOffice document server (in-browser
+> `.docx`/`.xlsx`/`.pptx` editing via iframe), and a LiveKit media
+> server (voice/video chat). All configuration lives in a git-ignored
+> `.env` (from `.env.example`) — no Kubernetes.
+
+## Docs
+
+- [README](README.md): Full configuration reference — services table, `.env` secret workflow, office-editor and chat flows, self-hosting scenario table, production notes (TLS, encrypt key, backups, storage modes).
+- [INSTALLATION](INSTALLATION.md): Step-by-step install: prerequisites, secret generation, browser-facing URLs, TLS/reverse proxy, verification, upgrades.
+- [AGENTS](AGENTS.md): Guidance for AI agents and automation: layout, paired-secret invariants, known traps (LiveKit config flag, TURN fields, port matrix), working rules.
+- [SKILL](SKILL.md): Agent operating procedures: validate/deploy/upgrade, diagnose unhealthy services with known failure signatures, rotate secrets, backup/restore, switch exposure scenario.
+- [SECURITY](SECURITY.md): Security policy, private vulnerability reporting, full secret inventory with rotation notes, exposure caveats.
+- [CONTRIBUTING](CONTRIBUTING.md): How to propose changes: issue/PR expectations, paired-secret invariants, validation, doc-sync rules.
+- [SUPPORT](SUPPORT.md): Where to get help and what to include in a bug report (versions, `docker compose ps`, logs, sanitized config), common quick answers.
+- [Code of Conduct](CODE_OF_CONDUCT.md): Contributor Covenant v2.1.
+- [docker-compose.yml](docker-compose.yml): The entire stack: 8 services, 7 named volumes; values come from `.env`.
+- [generate-secrets.sh](generate-secrets.sh): Creates `.env` from `.env.example`, rotates every `change-me` placeholder, refuses to overwrite an already-configured stack.
+- [livekit.yaml](livekit.yaml): LiveKit media-server config (signaling 7880, ICE 7881/7882, TURN 50000–50100; the API key pair comes from `LIVEKIT_KEYS` in the compose file, sourced from `.env`).
+- [cube.js](cube.js): Cube.js analytics runtime config (rarely edited).
+
+## Optional
+
+- [llms.txt](llms.txt): This file — LLM-oriented index of the repository.

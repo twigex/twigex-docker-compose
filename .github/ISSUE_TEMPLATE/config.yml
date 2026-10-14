@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & setup help
+    url: https://github.com/twigex/twigex-docker-compose/discussions
+    about: Ask before filing — most setup questions are answered in README.md and INSTALLATION.md.
+  - name: Security vulnerabilities
+    url: https://github.com/twigex/twigex-docker-compose/security/advisories/new
+    about: Never file these as issues — use GitHub private security reporting or support@twigex.com (see SECURITY.md).

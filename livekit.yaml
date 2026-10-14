@@ -1,0 +1,43 @@
+# LiveKit server config for the twigex Docker Compose stack.
+#
+# Mounted read-only into the livekit container. The container runs
+# `livekit-server --config /livekit.yaml` (see docker-compose.yml),
+# so this file is the source of truth for every LiveKit value here.
+#
+# One important exception: the API key pair is NOT in this file. It comes
+# from the LIVEKIT_KEYS environment variable in docker-compose.yml, sourced
+# from TWIGEX_CHANNEL_KEY / TWIGEX_CHANNEL_SECRET in `.env` — one source of
+# truth, shared with the twigex service. Rotate only in `.env`.
+#
+# TURN-only: TURN embeds its own STUN server, so we don't need a
+# separate STUN block. If a future use-case demands explicit STUN
+# (e.g. browsers behind pathological NATs), add an `stun:` block here.
+
+port: 7880
+
+# Bind address(es) LiveKit listens on. `""` is "all interfaces" — the
+# same as --bind 0.0.0.0. Without explicit bind_addresses in non-dev
+# mode, LiveKit defaults to loopback (127.0.0.1, ::1) which would
+# break LAN/internet reachability.
+bind_addresses:
+  - ""
+
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+
+turn:
+  # TURN relay UDP range. Single-host LAN deployments can shrink this
+  # (e.g. 50000-50010) to reduce exposure; the range below (50000-50100)
+  # is what's published in the compose port range — the two must match.
+  # NOTE: the YAML keys here are `relay_range_start`/`relay_range_end`
+  # (per pkg/config/config.go's TURNConfig struct). Earlier iterations
+  # of this file used `udp_port_range_*`, which is not in the schema
+  # and causes livekit to crash with "field not found in type
+  # config.TURNConfig" at startup.
+  relay_range_start: 50000
+  relay_range_end:   50100
+
+# Shared key. TWIGEX_CHANNEL_KEY (left side) is the literal "key";
+# TWIGEX_CHANNEL_SECRET (right side) is rotated alongside all the
+# other secrets by generate-secrets.sh (README → Quick start).

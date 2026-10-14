@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in the compose stack doesn't work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not use this template for security vulnerabilities** — follow
+        [SECURITY.md](../blob/main/SECURITY.md) instead (private reporting).
+
+        Redact all passwords/secrets before posting. The literal
+        `change-me` defaults are fine to show.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected vs. what actually happened.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: exposure
+    attributes:
+      label: How do you access the stack?
+      options:
+        - Same host (browser on the machine running compose)
+        - LAN IP
+        - Public domain with reverse proxy / TLS
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `docker compose version && docker --version && git rev-parse --short HEAD`
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: ps
+    attributes:
+      label: docker compose ps output
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs from the failing service
+      description: "`docker compose logs --no-color --tail=100 <service>` — redact secrets"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: Local changes
+      description: Any change you made to `docker-compose.yml` or `livekit.yaml` (redacted).
