@@ -1,0 +1,185 @@
+# twigex — Docker Compose.
+#
+# Single-node stack covering the full product surface: app server (twigex),
+# database (mariadb), cache (redis), analytics (cube.js router/worker/api),
+# the document server (eurooffice) the app loads in an iframe for editing
+# .docx/.xlsx/.pptx in the browser, and the livekit media server for
+# voice/video chat.
+#
+# Networking is the default compose-managed bridge — every service can reach
+# every other by service name. There are no `docker network create` steps.
+#
+# Quick start:
+#   bash generate-secrets.sh
+#   docker compose up -d
+#   # Browser: http://<host>:3000 (TLS-terminate with a reverse proxy before
+#   # exposing port 3000 publicly).
+#   # First-boot login: admin / <printed by generate-secrets.sh>
+#
+# ALL configurable values live in `.env` (created by generate-secrets.sh from
+# .env.example). This file contains only structure: images, ports, volumes,
+# and the wiring between services. Nothing secret is stored here — it is safe
+# to commit. `.env` is git-ignored and must never be committed.
+#
+# Cross-service secret contracts (single .env variable, consumed by both
+# sides — the pairing is visible right here):
+#   TWIGEX_DB_PASSWORD        twigex + mariadb (MARIADB_PASSWORD)
+#   TWIGEX_REDIS_PASSWORD     twigex + redis
+#   TWIGEX_OFFICE_SECRET      twigex + eurooffice (JWT_SECRET)
+#   TWIGEX_CHANNEL_SECRET     twigex + livekit (LIVEKIT_KEYS)
+#   TWIGEX_COLLIMATO_CUBE_API_SECRET       twigex + cube-api (CUBEJS_API_SECRET)
+#   TWIGEX_COLLIMATO_CUBE_CALLBACK_SECRET  twigex + cube-api (CUBE_CALLBACK_SECRET)
+
+name: twigex
+
+volumes:
+  twigex_data:
+  twigex_config:
+  mariadb_data:
+  redis_data:
+  cube_router_data:
+  cube_worker_data:
+  eurooffice_data:
+
+services:
+  twigex:
+    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.15.0}
+    restart: unless-stopped
+    ports:
+      - "${TWIGEX_PORT:-3000}:3000"
+    depends_on:
+      mariadb:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file: .env
+    volumes:
+      - twigex_data:/app/data
+      - twigex_config:/app/config
+
+  cube-router:
+    image: cubejs/cubestore:${CUBESTORE_IMAGE_TAG:-v1.7.33}
+    restart: unless-stopped
+    environment:
+      CUBESTORE_SERVER_NAME: cube-router:9999
+      CUBESTORE_META_PORT: "9999"
+      CUBESTORE_WORKERS: cube-worker-1:9001
+      CUBESTORE_REMOTE_DIR: /cube/data
+    volumes:
+      - cube_router_data:/cube/data
+
+  cube-worker-1:
+    image: cubejs/cubestore:${CUBESTORE_IMAGE_TAG:-v1.7.33}
+    restart: unless-stopped
+    depends_on:
+      cube-router:
+        condition: service_started
+    environment:
+      CUBESTORE_SERVER_NAME: cube-worker-1:9001
+      CUBESTORE_WORKER_PORT: "9001"
+      CUBESTORE_META_ADDR: cube-router:9999
+      CUBESTORE_WORKERS: cube-worker-1:9001
+      CUBESTORE_REMOTE_DIR: /cube/data
+    volumes:
+      - cube_worker_data:/cube/data
+
+  cube-api:
+    image: cubejs/cube:${CUBE_IMAGE_TAG:-v1.7.33}
+    restart: unless-stopped
+    expose:
+      - "4000"
+    depends_on:
+      cube-router:
+        condition: service_started
+      cube-worker-1:
+        condition: service_started
+      twigex:
+        condition: service_started
+    env_file: .env
+    environment:
+      # Map the shared twigex-side secrets onto cube's own names.
+      CUBEJS_API_SECRET: ${TWIGEX_COLLIMATO_CUBE_API_SECRET}
+      CUBE_CALLBACK_SECRET: ${TWIGEX_COLLIMATO_CUBE_CALLBACK_SECRET}
+      TWIGEX_INTERNAL_URL: http://twigex:3000/api/internal/cube
+      CUBEJS_CUBESTORE_HOST: cube-router
+      CUBEJS_DEV_MODE: "false"
+    volumes:
+      - ./cube.js:/cube/conf/cube.js:ro
+
+  mariadb:
+    image: mariadb:${MARIADB_IMAGE_TAG:-11}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      # Same value as twigex's TWIGEX_DB_PASSWORD (one .env variable).
+      MARIADB_PASSWORD: ${TWIGEX_DB_PASSWORD}
+      # Same values as twigex's TWIGEX_DB_USER / TWIGEX_DB_NAME.
+      MARIADB_USER: ${TWIGEX_DB_USER}
+      MARIADB_DATABASE: ${TWIGEX_DB_NAME}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  redis:
+    image: redis:${REDIS_IMAGE_TAG:-7-alpine}
+    restart: unless-stopped
+    env_file: .env
+    command:
+      - sh
+      - -c
+      - |
+        redis-server --appendonly yes --requirepass "$$TWIGEX_REDIS_PASSWORD"
+    volumes:
+      - redis_data:/data
+
+  # EuroOffice document server — the in-browser .docx/.xlsx/.pptx editor.
+  # twigex's browser loads the editor iframe from TWIGEX_OFFICE_HOST (in
+  # .env) — a browser-facing URL for this container's host port 9980
+  # (localhost for same-host use, a reverse proxy for LAN/public).
+  # twigex itself does not call this container over Docker networking.
+  eurooffice:
+    image: ghcr.io/euro-office/documentserver:${EUROOFFICE_IMAGE_TAG:-v9.3.4}
+    restart: unless-stopped
+    ports:
+      - "${EUROOFFICE_PORT:-9980}:80"
+    environment:
+      JWT_ENABLED: "true"
+      # Same value as twigex's TWIGEX_OFFICE_SECRET (one .env variable).
+      JWT_SECRET: ${TWIGEX_OFFICE_SECRET}
+    volumes:
+      # NOT user documents — twigex owns all files (twigex_data + DB).
+      # This persists only internal, regeneration-able state (e.g. the
+      # auto-generated secure-link secret under Data/.private) across
+      # container recreation.
+      - eurooffice_data:/var/www/euro-office/Data
+
+  # LiveKit media server — backs twigex's in-app voice/video chat.
+  # The BROWSER is the client: it dials TWIGEX_CHANNEL_HOST (the
+  # host-published port 7880) for signaling, and the browser's ICE/TURN
+  # traffic hits 7881 (TCP), 7882 (UDP) and 50000-50100 (UDP) directly —
+  # so all of those must be reachable from the browser, not just 7880.
+  # For internet-facing chat, see README → "Production notes" (TLS): the
+  # same reverse proxy routes wss:// plus the TCP/UDP forwards.
+  livekit:
+    image: livekit/livekit-server:${LIVEKIT_IMAGE_TAG:-v1.13.5}
+    restart: unless-stopped
+    # Use --config (the file-path flag) so LiveKit reads livekit.yaml
+    # from disk. NOTE: do NOT also set LIVEKIT_CONFIG here — urfave/cli
+    # v3 binds that env var to --config-body (raw YAML string), so the
+    # literal path "/livekit.yaml" would be parsed as the config body
+    # and the server would crash. Keep --config explicit; leave no env var.
+    #
+    # The API key pair comes from LIVEKIT_KEYS below (same .env variable
+    # as twigex's TWIGEX_CHANNEL_SECRET) — livekit.yaml deliberately
+    # contains no keys block, so there is exactly ONE source of truth.
+    command: ["--config", "/livekit.yaml"]
+    environment:
+      # Format is strictly "key: secret" (space after colon required).
+      LIVEKIT_KEYS: "${TWIGEX_CHANNEL_KEY}: ${TWIGEX_CHANNEL_SECRET}"
+    ports:
+      - "7880:7880"        # WebSocket signaling (browser-facing URL via TWIGEX_CHANNEL_HOST)
+      - "7881:7881"        # ICE TCP fallback (matches livekit.yaml: rtc.tcp_port)
+      - "7882:7882/udp"    # ICE UDP (matches livekit.yaml: rtc.udp_port)
+      - "50000-50100:50000-50100/udp"  # TURN UDP relay range
+    volumes:
+      - ./livekit.yaml:/livekit.yaml:ro
