@@ -80,7 +80,7 @@ it over hand-editing single sides.
 2. Validate before proposing: `docker compose config -q`
    (and `docker compose config` to eyeball interpolation).
 3. Don't bump image tags casually — current app image is
-   ghcr.io/twigex/twigex-ee:0.15.0.
+   ghcr.io/twigex/twigex-ee:0.16.0.
 4. Keep `README.md` accurate: any env var, port, or secret change
    must be reflected there (and in SECURITY.md's secret inventory when
    secrets change).

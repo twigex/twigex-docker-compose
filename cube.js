@@ -2,23 +2,57 @@
 //
 // A single Cube.js deployment serves every Collimato workspace. It holds no
 // per-workspace files or database credentials of its own — instead it resolves
-// everything at query time by calling back into cospace's internal Cube API,
-// keyed on the workspaceId carried in the JWT that cospace signs and sends.
+// everything at query time by calling back into twigex's internal Cube API,
+// keyed on the workspaceId carried in the JWT that twigex signs and sends.
 //
 // Required environment variables:
-//   CUBEJS_API_SECRET     shared secret that verifies the JWT from cospace.
-//                         Must equal cospace TWIGEX_COLLIMATO_CUBE_API_SECRET.
-//   TWIGEX_INTERNAL_URL  base URL of cospace's internal Cube API, e.g.
-//                         http://cospace:3000/api/internal/cube (private network).
-//   CUBE_CALLBACK_SECRET  shared secret sent back to cospace on every callback.
-//                         Must equal cospace TWIGEX_COLLIMATO_CUBE_CALLBACK_SECRET.
+//   CUBEJS_API_SECRET     shared secret that verifies the JWT from twigex.
+//                         Must equal twigex TWIGEX_COLLIMATO_CUBE_API_SECRET.
+//   TWIGEX_INTERNAL_URL  base URL of twigex's internal Cube API, e.g.
+//                         http://twigex:3000/api/internal/cube (private network).
+//   CUBE_CALLBACK_SECRET  shared secret sent back to twigex on every callback.
+//                         Must equal twigex TWIGEX_COLLIMATO_CUBE_CALLBACK_SECRET.
 //
-// Optional (development):
+// Optional:
 //   CUBE_DEBUG            set to "false" to silence [cube:debug] lines.
 //                         Defaults to on. Errors are always printed.
+//   CUBE_DB_CONNECT_TIMEOUT_MS  how long to wait for a source database to accept
+//                         a connection. Default 15000.
 
 const TWIGEX_URL = process.env.TWIGEX_INTERNAL_URL;
 const CALLBACK_SECRET = process.env.CUBE_CALLBACK_SECRET;
+const CONNECT_TIMEOUT_MS = Number(process.env.CUBE_DB_CONNECT_TIMEOUT_MS) || 15000;
+
+// Node tls options. pg hands these to tls.connect unchanged, so the identity
+// check is replaced with a no-op for verify-ca. mysql2 does not: it reads only
+// rejectUnauthorized and verifyIdentity off this object and overwrites
+// checkServerIdentity itself, defaulting to no hostname check. verify-full has to
+// ask for that check explicitly there, or it silently degrades to verify-ca.
+const sslOption = (mode, ca, type) => {
+  const trust = ca ? { ca } : {};
+
+  switch (mode) {
+    case 'require':
+      return { rejectUnauthorized: false };
+    case 'verify-ca':
+      return { ...trust, rejectUnauthorized: true, checkServerIdentity: () => undefined };
+    case 'verify-full':
+      // The other modes are driver independent: an unmapped driver can only end
+      // up stricter than asked, which fails visibly. This one can end up quieter
+      // than asked, so a driver we have not checked is refused rather than
+      // guessed at. Adding one means reading its source to find whether it hands
+      // this object to tls.connect or reads its own keys off it.
+      if (type === 'mysql') {
+        return { ...trust, rejectUnauthorized: true, verifyIdentity: true };
+      }
+      if (type === 'postgres') {
+        return { ...trust, rejectUnauthorized: true };
+      }
+      throw new Error(`sslOption: no verified TLS mapping for driver "${type}"`);
+    default:
+      return false;
+  }
+};
 
 // Debug is on by default so you get visibility in dev; set CUBE_DEBUG=false to mute.
 const DEBUG = process.env.CUBE_DEBUG !== 'false';
@@ -41,7 +75,7 @@ function logError(scope, err, context) {
 if (!TWIGEX_URL) console.warn('[cube:warn] TWIGEX_INTERNAL_URL is not set');
 if (!CALLBACK_SECRET) console.warn('[cube:warn] CUBE_CALLBACK_SECRET is not set');
 
-// callCospace performs an authenticated GET against a cospace internal endpoint.
+// callCospace performs an authenticated GET against a twigex internal endpoint.
 async function callCospace(pathname, params) {
   const url = new URL(TWIGEX_URL + pathname);
   for (const [key, value] of Object.entries(params)) {
@@ -68,7 +102,7 @@ async function callCospace(pathname, params) {
   const ms = Date.now() - started;
 
   if (!res.ok) {
-    // Capture the response body — cospace's actual error message usually lives
+    // Capture the response body — twigex's actual error message usually lives
     // here, and it's lost if you only look at the status code.
     let body = '';
     try {
@@ -118,7 +152,7 @@ module.exports = {
     return id;
   },
 
-  // Serve the workspace's cube/view definitions from cospace (backed by the DB).
+  // Serve the workspace's cube/view definitions from twigex (backed by the DB).
   repositoryFactory: ({ securityContext }) => ({
     dataSchemaFiles: async () => {
       const workspaceId = securityContext.workspaceId;
@@ -138,7 +172,7 @@ module.exports = {
     },
   }),
 
-  // Poll for changes: when a workspace edits a file in the cospace GUI this value
+  // Poll for changes: when a workspace edits a file in the twigex GUI this value
   // changes and Cube hot-reloads the model — no restart, no redeploy.
   schemaVersion: async ({ securityContext }) => {
     const workspaceId = securityContext.workspaceId;
@@ -180,10 +214,16 @@ module.exports = {
       return {
         type: conn.type,
         host: conn.host,
-        port: conn.port,
+        port: Number(conn.port),
         database: conn.database,
         user: conn.user,
         password: conn.password,
+        ssl: sslOption(conn.ssl_mode, conn.ssl_ca, conn.type),
+        // Bounded so an unreachable DB surfaces as "connect ETIMEDOUT" instead of
+        // hanging into a 504. Generous by default: a server doing a reverse DNS
+        // lookup on the client IP can take seconds to answer a working connection,
+        // and a timeout here is indistinguishable from unreachable.
+        connectTimeout: CONNECT_TIMEOUT_MS,
       };
     } catch (err) {
       logError('driverFactory', err, { workspaceId, dataSource });

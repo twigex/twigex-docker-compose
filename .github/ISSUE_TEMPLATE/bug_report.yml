@@ -7,6 +7,8 @@ body:
       value: |
         **Do not use this template for security vulnerabilities** — follow
         [SECURITY.md](../blob/main/SECURITY.md) instead (private reporting).
+        The fields below mirror the checklist in
+        [SUPPORT.md](../blob/main/SUPPORT.md).
 
         Redact all passwords/secrets before posting. The literal
         `change-me` defaults are fine to show.
@@ -61,4 +63,4 @@ body:
     id: changes
     attributes:
       label: Local changes
-      description: Any change you made to `docker-compose.yml` or `livekit.yaml` (redacted).
+      description: Any change you made to `.env`, `docker-compose.yml`, or `livekit.yaml` (redacted).

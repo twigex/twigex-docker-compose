@@ -335,8 +335,7 @@ the file.
 `TWIGEX_CHANNEL_KEY` stays `key` — only the secret is secret) in one
 shot, shared by twigex and livekit. **Run that before exposing port
 7880 to anything other than this machine's localhost.** The rotated
-key is the real authentication boundary — not `--dev` mode, and
-not the bind address.
+key is the real authentication boundary — not the bind address.
 
 ---
 
