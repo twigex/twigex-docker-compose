@@ -134,7 +134,7 @@ All image tags are `.env` variables (`TWIGEX_IMAGE_TAG`, `CUBE_IMAGE_TAG`,
 per version), then
 `docker compose pull && docker compose up -d`. Take a backup first (see
 `README.md` → "Backups"). The app image is currently
-`ghcr.io/twigex/twigex-ee` at tag `${TWIGEX_IMAGE_TAG:-0.15.0}`.
+`ghcr.io/twigex/twigex-ee` at tag `${TWIGEX_IMAGE_TAG:-0.16.0}`.
 
 ## Backups and teardown
 

@@ -43,7 +43,7 @@ volumes:
 
 services:
   twigex:
-    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.15.0}
+    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.16.0}
     restart: unless-stopped
     ports:
       - "${TWIGEX_PORT:-3000}:3000"

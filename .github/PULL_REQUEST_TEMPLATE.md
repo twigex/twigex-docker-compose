@@ -10,9 +10,10 @@
 
 - [ ] One change per PR (small diff).
 - [ ] `docker compose config -q` passes locally.
-- [ ] If secrets are touched: paired secrets changed **together** (see
-      the invariants table in `AGENTS.md`), and `README.md`/`SECURITY.md`
-      updated.
+- [ ] If secrets are touched: paired secrets are **single `.env`
+      variables** (see the invariants table in `AGENTS.md`) — edit the
+      one line, don't split it into per-service copies — and
+      `README.md`/`SECURITY.md` updated.
 - [ ] Any env var, port, or image-tag change is reflected in `README.md`
       (and `.env.example`).
 - [ ] No real secret values committed (defaults stay the literal

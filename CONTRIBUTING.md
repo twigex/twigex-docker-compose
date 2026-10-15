@@ -20,6 +20,7 @@ Thanks for helping improve the twigex single-node Docker Compose stack!
 2. Validate before submitting:
 
    ```bash
+   cp .env.example .env
    docker compose config -q        # syntax + interpolation must pass
    ```
 

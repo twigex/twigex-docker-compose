@@ -20,7 +20,7 @@
 - [SUPPORT](SUPPORT.md): Where to get help and what to include in a bug report (versions, `docker compose ps`, logs, sanitized config), common quick answers.
 - [Code of Conduct](CODE_OF_CONDUCT.md): Contributor Covenant v2.1.
 - [docker-compose.yml](docker-compose.yml): The entire stack: 8 services, 7 named volumes; values come from `.env`.
-- [generate-secrets.sh](generate-secrets.sh): Creates `.env` from `.env.example`, rotates every `change-me` placeholder, refuses to overwrite an already-configured stack.
+- [generate-secrets.sh](generate-secrets.sh): Creates `.env` from `.env.example`, rotates every `change-me` placeholder (the two S3 storage keys are blanked — S3-only), is a no-op on an already-configured stack.
 - [livekit.yaml](livekit.yaml): LiveKit media-server config (signaling 7880, ICE 7881/7882, TURN 50000–50100; the API key pair comes from `LIVEKIT_KEYS` in the compose file, sourced from `.env`).
 - [cube.js](cube.js): Cube.js analytics runtime config (rarely edited).
 
