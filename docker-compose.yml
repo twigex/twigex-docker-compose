@@ -45,7 +45,7 @@ services:
   # Makes the twigex volumes writable by uid/gid 1000 (the
   # "twigex" user the image runs as).
   twigex-vol-init:
-    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.16.0}
+    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.17.0}
     user: "0:0"
     restart: "no"
     entrypoint: ["sh", "-c", "chown -R 1000:1000 /app/data /app/config"]
@@ -54,7 +54,7 @@ services:
       - twigex_config:/app/config
 
   twigex:
-    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.16.0}
+    image: ghcr.io/twigex/twigex-ee:${TWIGEX_IMAGE_TAG:-0.17.0}
     # Enforce non-root even if an older root-running image is in use.
     user: "1000:1000"
     restart: unless-stopped
